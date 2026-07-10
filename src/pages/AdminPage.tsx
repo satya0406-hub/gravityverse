@@ -7,6 +7,7 @@ import { db } from '../lib/firebase';
 import { cn, formatDate } from '../lib/utils';
 import { handleFirestoreError } from '../lib/errorHandler';
 import { Link } from 'react-router-dom';
+import { ImageUploader } from '../components/ImageUploader';
 
 interface ContentItem {
   id: string;
@@ -38,6 +39,13 @@ export function AdminDashboard() {
   const [manualContent, setManualContent] = useState('');
   const [manualImageUrl, setManualImageUrl] = useState('');
   const [manualCategory, setManualCategory] = useState('Blog');
+
+  // Image upload tracking states
+  const [isUploadingGen, setIsUploadingGen] = useState(false);
+  const [isUploadingManual, setIsUploadingManual] = useState(false);
+  const [isUploadingEdit, setIsUploadingEdit] = useState(false);
+  const [uploadKeyGen, setUploadKeyGen] = useState(0);
+  const [uploadKeyManual, setUploadKeyManual] = useState(0);
 
   // Let's reset success and error state when activeTab changes
   useEffect(() => {
@@ -113,6 +121,7 @@ export function AdminDashboard() {
       const { id, ...data } = editingItem;
       await updateDoc(doc(db, colName, id), {
         ...data,
+        imageUrl: editingItem.image,
         updatedAt: serverTimestamp()
       });
       setEditingItem(null);
@@ -144,13 +153,15 @@ export function AdminDashboard() {
       };
 
       const colName = collectionMap[category];
+      const imgUrl = finalImageUrl(category);
       
       const finalDoc = {
         title: generatedContent.title,
         description: generatedContent.description,
         content: generatedContent.content,
         author: generatedContent.author,
-        image: finalImageUrl(category),
+        image: imgUrl,
+        imageUrl: imgUrl,
         category: category,
         date: serverTimestamp()
       };
@@ -160,6 +171,7 @@ export function AdminDashboard() {
       setSuccess(true);
       setTopic('');
       setImageUrl('');
+      setUploadKeyGen(prev => prev + 1);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred during document formulation.");
     } finally {
@@ -188,13 +200,15 @@ export function AdminDashboard() {
 
     try {
       const colName = collectionMap[manualCategory];
+      const imgUrl = finalImageUrl(manualCategory, manualImageUrl);
       
       const finalDoc = {
         title: manualTitle.trim(),
         description: manualDescription.trim() || `${manualCategory} study and publication written directly in the control panel.`,
         content: manualContent,
         author: manualAuthor.trim() || 'Anonymous',
-        image: finalImageUrl(manualCategory, manualImageUrl),
+        image: imgUrl,
+        imageUrl: imgUrl,
         category: manualCategory,
         date: serverTimestamp()
       };
@@ -207,6 +221,7 @@ export function AdminDashboard() {
       setManualDescription('');
       setManualContent('');
       setManualImageUrl('');
+      setUploadKeyManual(prev => prev + 1);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred during manual publishing.");
     } finally {
@@ -306,25 +321,22 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="space-y-6">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Image URL (Optional)</label>
-              <div className="relative">
-                <ImageIcon className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-700 w-5 h-5" />
-                <input 
-                  type="text" 
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-transparent border-b border-white/10 py-5 pl-10 pr-4 focus:border-brand-blue outline-none transition-all placeholder:text-gray-800"
-                />
-              </div>
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Post Image (Optional)</label>
+              <ImageUploader
+                key={uploadKeyGen}
+                category={category}
+                onUploadComplete={(url) => setImageUrl(url)}
+                onUploadCleared={() => setImageUrl('')}
+                onUploadingStateChange={setIsUploadingGen}
+              />
             </div>
 
             <div className="pt-6">
               <button
                 onClick={handlePublish}
-                disabled={!topic || loading}
-                className="w-full btn-primary py-5 text-lg flex items-center justify-center gap-3"
+                disabled={!topic || loading || isUploadingGen}
+                className="w-full btn-primary py-5 text-lg flex items-center justify-center gap-3 animate-pulse-subtle"
               >
                 {loading ? (
                   <>
@@ -415,17 +427,14 @@ export function AdminDashboard() {
               </div>
 
               <div className="space-y-3 md:col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Image URL (Optional)</label>
-                <div className="relative">
-                  <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 w-5 h-5" />
-                  <input 
-                    type="text" 
-                    value={manualImageUrl}
-                    onChange={(e) => setManualImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/... (Leave empty for beautiful category default picture)"
-                    className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-3 rounded-xl focus:border-brand-blue outline-none transition-all placeholder:text-gray-700"
-                  />
-                </div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Post Image (Optional)</label>
+                <ImageUploader
+                  key={uploadKeyManual}
+                  category={manualCategory}
+                  onUploadComplete={(url) => setManualImageUrl(url)}
+                  onUploadCleared={() => setManualImageUrl('')}
+                  onUploadingStateChange={setIsUploadingManual}
+                />
               </div>
 
               <div className="space-y-3 md:col-span-2">
@@ -455,7 +464,7 @@ export function AdminDashboard() {
               <button
                 type="button"
                 onClick={handleManualPublish}
-                disabled={!manualTitle.trim() || !manualContent.trim() || loading}
+                disabled={!manualTitle.trim() || !manualContent.trim() || loading || isUploadingManual}
                 className="w-full btn-primary py-5 text-lg flex items-center justify-center gap-3"
               >
                 {loading ? (
@@ -642,12 +651,13 @@ export function AdminDashboard() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Image URL</label>
-                  <input 
-                    type="text" 
-                    value={editingItem.image}
-                    onChange={e => setEditingItem({...editingItem, image: e.target.value})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:border-brand-blue outline-none"
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Image</label>
+                  <ImageUploader
+                    category={editingItem.category}
+                    existingUrl={editingItem.image}
+                    onUploadComplete={(url) => setEditingItem({...editingItem, image: url})}
+                    onUploadCleared={() => setEditingItem({...editingItem, image: ''})}
+                    onUploadingStateChange={setIsUploadingEdit}
                   />
                 </div>
                 <div className="space-y-2">
@@ -672,7 +682,7 @@ export function AdminDashboard() {
                 <div className="pt-6">
                   <button 
                     onClick={handleUpdate}
-                    disabled={loading}
+                    disabled={loading || isUploadingEdit}
                     className="w-full bg-brand-blue hover:bg-blue-600 disabled:opacity-50 py-4 rounded-xl font-bold transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2"
                   >
                     {loading && <Loader2 className="w-4 h-4 animate-spin" />}
