@@ -6,7 +6,7 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/gravityverse/',
+    base: "/",
     plugins: [react(), tailwindcss()],
     // Keep other existing configurations unchanged...
     define: {
