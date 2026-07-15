@@ -1478,7 +1478,7 @@ export function GamesPage() {
                           <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
                             Outstanding job on Day {activeChallenge.day - 1}! To promote consistent coding & logic recall practices, Day {activeChallenge.day} unlocks in exactly:
                           </p>
-                          <div className="text-5xl sm:text-6xl font-black text-yellow-400 tracking-wider font-mono bg-neutral-950 p-6 rounded-2xl max-w-xs mx-auto border border-white/5 shadow-2xl relative overflow-hidden">
+                          <div className="text-5xl sm:text-6xl font-black text-yellow-400 tracking-normal font-mono tabular-nums bg-neutral-950 px-8 py-6 rounded-2xl w-fit min-w-[420px] mx-auto border border-white/5 shadow-2xl relative overflow-visible">
                             <span className="relative z-10">{getCooldownString(activeChallenge.day)}</span>
                             <div className="absolute inset-0 bg-yellow-400/5 blur-3xl rounded-full" />
                           </div>
